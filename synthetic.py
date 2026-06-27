@@ -18,13 +18,16 @@ class DMSyntheticItem(TypedDict):
     target_tensor: Tensor
     text: str
 
+
+
 class DMSyntheticDataset(Dataset):
     def __init__(self, size=128, alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
-                 min_len=4, max_len=20, transforms=None):
+                 min_len=4, max_len=20, dataset_len=1000, transforms=None):
         self.size = size
         self.alphabet = alphabet
         self.min_len = min_len
         self.max_len = max_len
+        self.dataset_len = dataset_len
         self.transforms = transforms or self.default_transforms()
 
     @staticmethod
@@ -94,4 +97,10 @@ class DMSyntheticDataset(Dataset):
         )
 
     def __len__(self):
-        return 1000000  # бесконечный генератор, можно поставить большое число
+        return self.dataset_len
+
+    def create_dataloader(self, batch_size=64) -> DataLoader:
+        """
+        Создает датасет c текущими настройками
+        """
+        return DataLoader(self, batch_size=batch_size, shuffle=False, num_workers=6)

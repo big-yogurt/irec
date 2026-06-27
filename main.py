@@ -5,6 +5,7 @@ from synthetic import DMSyntheticDataset
 ## Для отрисовки в картинку.
 import torchvision.transforms as T
 
+from train import DMTrainModel
 
 
 def main():
@@ -17,16 +18,19 @@ def main():
     #     activation=None,
     # )
 
+    model = DMTrainModel()
+    model.start_training()
+    model.test()
     ## Генерим рандомный экземпляр и сохраняем его.
-    synth = DMSyntheticDataset()
-    data = synth[0]
-
-    input: Image = T.ToPILImage()(data["input_tensor"])
-    target: Image = T.ToPILImage()(data["target_tensor"])
-
-    # display the PIL image
-    input.show("in")
-    target.show("out")
+    # synth = DMSyntheticDataset()
+    # data = synth[0]
+    #
+    # input: Image = T.ToPILImage()(data["input_tensor"])
+    # target: Image = T.ToPILImage()(data["target_tensor"])
+    #
+    # # display the PIL image
+    # input.show("in")
+    # target.show("out")
 
 if __name__ == "__main__":
     main()
