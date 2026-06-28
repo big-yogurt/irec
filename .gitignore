@@ -1,5 +1,11 @@
 venv/
 .idea
+test/
+test_old_dataset/
 .venv
 __pycache__
-lightning_logs
+lightning_logs/
+in.png
+out.png
+predicted.png
+scaled.jpg

@@ -36,6 +36,7 @@ class DMSyntheticDataset(Dataset):
         data = random.randbytes(bytes_count)
         dmtx_img = dmtx.encode(data)
 
+
         ideal_img = np \
             .frombuffer(dmtx_img.pixels, dtype=np.uint8) \
             .reshape(dmtx_img.height, dmtx_img.width, 3)
@@ -43,13 +44,18 @@ class DMSyntheticDataset(Dataset):
             .resize(ideal_img, (256, 256), interpolation=cv2.INTER_AREA)
         damage_img = _add_random_damage_to_img(ideal_img)
 
+        ideal_gray = cv2.cvtColor(ideal_img, cv2.COLOR_RGB2GRAY)
+
         mask = torch \
-            .from_numpy(ideal_img.astype(np.float32) / 255.0) \
-            .unsqueeze(0)
+            .from_numpy(ideal_gray.astype(np.float32) / 255.0) \
+            .unsqueeze(0)                                     \
+            .float()
         img = torch \
             .from_numpy(damage_img.astype(np.float32) / 255.0) \
-            .permute(1, 2, 0)
-        return img, mask 
+            .permute(2, 0, 1)                                  \
+            .float()
+        return img, mask
+
 
 
 def _add_random_damage_to_img(ideal_img: np.ndarray) -> np.ndarray:
