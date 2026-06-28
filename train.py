@@ -241,7 +241,7 @@ class DMTrainModel(pl.LightningModule):
         Проверка модельки на существующей картинке
         :param img_path: путь к файлу
         """
-        pic: Image = PIL.Image.open(img_path).resize((128,128))
+        pic: Image = PIL.Image.open(img_path).resize((256,256))
         # pic.save("scaled.jpg")
         # input = T.PILToTensor()(input).permute(2, 0, 1).float()
         # hwc -> cwh
