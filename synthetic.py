@@ -1,106 +1,104 @@
-import io
 import random
-from typing import TypedDict
 
-import numpy as np
 import cv2
-from PIL import Image
-from PIL.Image import Image as PIL_Image
+import numpy as np
 import albumentations as A
-from pylibdmtx.pylibdmtx import encode, decode
+import pylibdmtx.pylibdmtx as dmtx
 import torch
 from torch import Tensor
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 
-## Типизация выхлопа с get_item
-class DMSyntheticItem(TypedDict):
-    input_tensor: Tensor
-    target_tensor: Tensor
-    text: str
 
+DEFAULT_IMG_SIZE = (256, 256)
 
 
 class DMSyntheticDataset(Dataset):
-    def __init__(self, size=128, alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
-                 min_len=4, max_len=20, dataset_len=1000, transforms=None):
-        self.size = size
-        self.alphabet = alphabet
-        self.min_len = min_len
-        self.max_len = max_len
-        self.dataset_len = dataset_len
-        self.transforms = transforms or self.default_transforms()
+    """
+    Датасет синтетических данных, который генерирует изображения datamatrix
+    кодов на лету.
+    """
 
-    @staticmethod
-    def default_transforms() -> A.Compose:
-        return A.Compose([
-            A.Rotate(limit=(-90, 90), border_mode=cv2.BORDER_CONSTANT),  # небольшой поворот
-            A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
-            A.ISONoise(color_shift=(0.01, 0.05), intensity=(0.1, 0.3), p=0.5),
-            A.MotionBlur(blur_limit=3, p=0.3),
-            A.MedianBlur(blur_limit=3, p=0.3),
-            A.AdvancedBlur(blur_limit=(3, 5), p=0.3),  # дефокус
-            A.Perspective(scale=(0.05, 0.1), p=0.3),
-            A.Downscale(scale_range=(0.5, 0.9), p=0.2),
-            A.RandomFog(fog_coef_range=(0.1, 0.3), p=0.2),
-            A.RandomSunFlare(flare_roi=(0, 0, 1, 0.5), angle_range=(0, 1), num_flare_circles_range=(1, 2), src_radius=200, src_color=(255, 255, 255), p=0.2),
-            A.RandomRain(slant_range=(-10, 10), drop_length=10, drop_width=1, drop_color=(200, 200, 200),
-                         p=0.2),
-            A.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.1, hue=0.05, p=0.3),
-        ])
-
-    def generate_dm_code(self, text) -> PIL_Image:
-        # Генерируем DM-код с помощью pylibdmtx
-        size = 'RectAuto'
-        encoded = encode(text.encode('utf-8'), size=size)  # возвращает bytes
-        # Декодируем в массив numpy (градации серого)
-        img = Image.frombytes('RGB', (encoded.width, encoded.height), encoded.pixels)
-        img = np.array(img.convert('L'))  # (h, w) grayscale
-        return img
-
-    def __getitem__(self, _) -> DMSyntheticItem:
-        # Генерируем случайный текст
-        length = random.randint(self.min_len, self.max_len)
-        text = ''.join(random.choices(self.alphabet, k=length))
-
-        # Создаём чистый DM-код
-        clean = self.generate_dm_code(text)
-        # Ресайзим до (size, size) с сохранением пропорций, добавляем quiet zone
-        # pylibdmtx уже включает quiet zone, просто ресайз
-        clean = cv2.resize(clean, (self.size, self.size), interpolation=cv2.INTER_NEAREST)
-        clean = clean.astype(np.float32) / 255.0  # нормализуем [0,1]
-
-        # Преобразуем в RGB (повторяем канал 3 раза для входного цвета)
-        input_rgb = np.stack([clean, clean, clean], axis=-1)  # (H,W,3)
-
-        # Применяем аугментации (работают с RGB)
-        if self.transforms:
-            augmented = self.transforms(image=(input_rgb * 255).astype(np.uint8))
-            input_rgb = augmented['image'] / 255.0  # [0,1]
-
-        # Иногда инвертируем цвета (белый фон, чёрные модули) – в диссертации есть
-        if random.random() < 0.3:
-            input_rgb = 1.0 - input_rgb
-            clean = 1.0 - clean  # таргет тоже инвертируем? В диссертации инвертируют только вход? Лучше таргет оставить оригинальным, чтобы сеть училась восстанавливать правильный контраст.
-            # В работе: "image color inversion" – вероятно, инвертируют и вход, и таргет, чтобы сеть училась нормализовать. Я сделаю так:
-            # clean оставляем как есть (чёрные модули на белом), а вход инвертируем, сеть должна научиться возвращать правильную полярность.
-            # Но тогда таргет тоже надо инвертировать? Лучше оставить таргет без инверсии, чтобы сеть всегда выдавала чёрное на белом.
-            # Так и сделаем: инвертируем только вход, таргет – исходный clean.
-            # Но если мы инвертируем вход, то сеть должна восстановить правильную полярность.
-
-        # Преобразуем в тензоры PyTorch (C, H, W)
-        input_tensor = torch.from_numpy(input_rgb.transpose(2, 0, 1)).float()
-
-        target_tensor = torch.from_numpy(clean).unsqueeze(0).float()  # (1,H,W)
-
-        return DMSyntheticItem(
-            input_tensor=input_tensor, target_tensor=target_tensor, text=text
-        )
+    def __init__(self, dataset_len: int = 1000):
+        self._dataset_len = dataset_len
 
     def __len__(self):
-        return self.dataset_len
+        """
+        Возвращает размер датасета.
+        """
+        return self._dataset_len
 
-    def create_dataloader(self, batch_size=64) -> DataLoader:
+    def __getitem__(self, _) -> tuple[Tensor, Tensor]:
         """
-        Создает датасет c текущими настройками
+        Возвращает синтетические данные (изображения DM кодов в виде тензоров).
+        Первый тензор - входное изображение, второй - маска сегментации.
         """
-        return DataLoader(self, batch_size=batch_size, shuffle=False, num_workers=6)
+        bytes_count = random.randint(1, 64)
+        data = random.randbytes(bytes_count)
+        dmtx_img = dmtx.encode(data)
+
+        ideal_img = np \
+            .frombuffer(dmtx_img.pixels, dtype=np.uint8) \
+            .reshape(dmtx_img.height, dmtx_img.width, 3)
+        ideal_img = cv2 \
+            .resize(ideal_img, (256, 256), interpolation=cv2.INTER_AREA)
+        damage_img = _add_random_damage_to_img(ideal_img)
+
+        mask = torch \
+            .from_numpy(ideal_img.astype(np.float32) / 255.0) \
+            .unsqueeze(0)
+        img = torch \
+            .from_numpy(damage_img.astype(np.float32) / 255.0) \
+            .permute(1, 2, 0)
+        return img, mask 
+
+
+def _add_random_damage_to_img(ideal_img: np.ndarray) -> np.ndarray:
+    """
+    'Портит' изображение, добавляя различные помехи.
+    """
+    img = _add_random_background_to_img(ideal_img)
+    final_transform = A.Compose([
+        A.RandomBrightnessContrast(),
+        A.RandomToneCurve(),
+        A.MotionBlur(blur_limit=9, p=0.7),
+        A.RandomSunFlare(src_radius=200),
+    ])
+    img = final_transform(image=img)['image']
+    return img
+
+
+def _add_random_background_to_img(img: np.ndarray) -> np.ndarray:
+    bg = _gen_img_background()
+    h_code, w_code = img.shape[:2]
+    roi = bg[0:h_code, 0:w_code]
+    mask = (img[:, :, 0] == 0)
+    roi[mask] = img[mask]
+    bg[0:h_code, 0:w_code] = roi
+    return bg
+
+
+def _gen_img_background() -> np.ndarray:
+    h, w = DEFAULT_IMG_SIZE
+    n = random.randint(0, 2)
+    if n == 0: # Металл
+        noise = np.random.normal(128, 30, (h, w)).astype(np.uint8)
+        kernel = np.ones((1, 5), np.float32) / 5
+        tex = cv2.filter2D(noise, -1, kernel)
+        tex = cv2.cvtColor(tex, cv2.COLOR_GRAY2BGR)
+        grad = np.linspace(0.8, 1.2, w).reshape(1, w, 1)
+        tex = (tex * grad).astype(np.uint8)
+        return tex
+    elif n == 1: # Бумага
+        return np.random.normal(220, 6, (h, w, 3)).astype(np.uint8)
+    return np.random.normal(180, 10, (h, w, 3)).astype(np.uint8)
+
+
+if __name__ == "__main__":
+    dataset = DMSyntheticDataset(dataset_len=10)
+    for i in range(10):
+        img, mask = dataset[0]
+        img, mask = (img.permute(2, 0, 1).numpy() * 255) \
+            .astype(np.uint8), (mask.squeeze(0).numpy() * 255).astype(np.uint8)
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        cv2.imwrite(f"images/img{i}.png", img)
+        cv2.imwrite(f"images/mask{i}.png", mask)
