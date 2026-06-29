@@ -61,9 +61,10 @@ def _setup_syn_train_parser(syn_train_parser: argparse.ArgumentParser):
     """
     Настройка флагов для команды 'syn_train'
     """
-    syn_train_parser.add_argument("--epoch", type=int, help="Количество эпох")
+    syn_train_parser.add_argument("--epoch", type=int, help="Количество эпох",
+        required=True)
     syn_train_parser.add_argument("--dataset_len", type=int,
-        help="Количество пар изображений в датасете"
+        help="Количество пар изображений в датасете", required=True
     )
 
 
