@@ -13,6 +13,8 @@ from segmentation_models_pytorch.losses import DiceLoss
 from torch import Tensor
 from torch.utils.data import DataLoader
 from torch.optim import lr_scheduler
+
+from loss import hard_loss
 from synthetic import DMSyntheticDataset
 from pytorch_lightning.callbacks import RichProgressBar
 import torchvision.transforms as T
@@ -67,8 +69,10 @@ class DMTrainModel(pl.LightningModule):
         )
 
         # dice пойдет
-        self.loss_fn = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
+        # self.loss_fn = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
 
+        # самопал надо проверить работает вообще или нет
+        self.loss_fn = hard_loss
         # mse выдает шлак на 50 эпох и 500 картинках
         #self.loss_fn = nn.MSELoss()
 

@@ -10,11 +10,11 @@ from train import DMTrainModel
 
 def main():
     model = DMTrainModel()
-    # model.start_training(20, 200)
-    model.load("./test")
-    # model.save("./test")
-    # model.test()
-    model.test_img("in.png")
+    model.start_training(50, 250)
+    #model.load("./test_hard_loss")
+    model.save("./test_hard_loss")
+    #model.test()
+    # model.test_img("out.png")
 
 
 if __name__ == "__main__":
