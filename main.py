@@ -5,13 +5,6 @@ import train
 
 
 def main():
-    model = DMTrainModel()
-    model.start_training(50, 250)
-    #model.load("./test_hard_loss")
-    model.save("./test_hard_loss")
-    #model.test()
-    # model.test_img("out.png")
-
     cli_flags = cli.parse_cli()
     match cli_flags.command:
         case "run":
