@@ -20,7 +20,7 @@ import pylibdmtx.pylibdmtx as dmtx
 DEFAULT_IMG_SIZE = (256, 256)
 
 
-def gen_random_dmtx(max_data_len=64) -> np.ndarray:
+def gen_random_dmtx(max_data_len: int = 64) -> np.ndarray:
     """
     Генерирует datamatrix со случайными закодироваными данными. Возвращает в
     виде `np.ndarray` в RGB.
@@ -46,7 +46,7 @@ def make_img_realistic(img: np.ndarray) -> np.ndarray:
     img = img.copy()
     if random.randint(1, 2) == 2:
         _add_scratches_to_img(img)
-    img = _add_random_background_to_img(img)
+    _add_random_background_to_img(img)
     final_transform = A.Compose([
         A.RandomBrightnessContrast(),
         A.RandomToneCurve(),
@@ -57,14 +57,13 @@ def make_img_realistic(img: np.ndarray) -> np.ndarray:
     return img
 
 
-def _add_random_background_to_img(img: np.ndarray) -> np.ndarray:
+def _add_random_background_to_img(img: np.ndarray):
+    """
+    Белый цвет заменяется на фоновое изображение.
+    """
     bg = _gen_img_background()
-    h_code, w_code = img.shape[:2]
-    roi = bg[0:h_code, 0:w_code]
-    mask = (img[:, :, 0] == 0)
-    roi[mask] = img[mask]
-    bg[0:h_code, 0:w_code] = roi
-    return bg
+    dmtx_mask = img[:, :, 0] != 0
+    img[dmtx_mask] = bg[dmtx_mask]
 
 
 def _gen_img_background() -> np.ndarray:
