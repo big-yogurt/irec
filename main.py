@@ -15,6 +15,8 @@ def main():
             command_train(cli_flags)
         case "test":
             command_test(cli_flags)
+        case "syn_test":
+            command_syn_test(cli_flags)
 
 
 def command_run(cli_flags: argparse.Namespace):
@@ -37,6 +39,11 @@ def command_test(cli_flags: argparse.Namespace):
     model = train.DMTrainModel()
     model.load(cli_flags.load_nn)
     model.test_img(cli_flags.path_to_image)
+
+
+def command_syn_test(cli_flags: argparse.Namespace):
+    model = train.DMTrainModel()
+    model.load(cli_flags.load_nn)
 
 
 if __name__ == "__main__":

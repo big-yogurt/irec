@@ -31,7 +31,26 @@ def parse_cli() -> argparse.Namespace:
     )
     _setup_test_parser(test_parser)
 
+    # Команда 'syn_test'
+    syn_test_parser = subparsers.add_parser("syn_test",
+        help="Тестирование модели на синтетических данных"
+    )
+    _setup_syn_test_parser(syn_test_parser)
+
+
     return parser.parse_args()
+
+
+def _setup_syn_test_parser(syn_test_parser: argparse.ArgumentParser):
+    syn_test_parser.add_argument("--input_path", type=str, default="tests/in",
+        help="Путь к папке, куда будут сохранены данные со входа нейросети"
+    )
+    syn_test_parser.add_argument("--output_path", type=str, default="tests/out",
+        help="Путь к папке, куда будут сохранены результаты работы нейросети"
+    )
+    syn_test_parser.add_argument("--pair_count", type=int, default=10,
+        help="Сколько пар (изображение, маска) будет сгенерировано"
+    )
 
 
 def _setup_test_parser(test_parser: argparse.ArgumentParser):
