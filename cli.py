@@ -26,10 +26,10 @@ def parse_cli() -> argparse.Namespace:
     _setup_train_parser(train_parser)
 
     # Команда 'test'
-    train_parser = subparsers.add_parser("test",
+    test_parser = subparsers.add_parser("test",
         help="Тестирование модели"
     )
-    _setup_test_parser(train_parser)
+    _setup_test_parser(test_parser)
 
     return parser.parse_args()
 
