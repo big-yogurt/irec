@@ -7,6 +7,7 @@ __pycache__
 lightning_logs/
 in.png
 out.png
+mask.png
 predicted.png
 scaled.jpg
 test_hard_loss/

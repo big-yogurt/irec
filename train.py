@@ -252,29 +252,28 @@ class DMTrainModel(pl.LightningModule):
 
         with torch.inference_mode():
             self.model.eval()
-            logits = self.model((data[0] - self.mean) / self.std)
+            logits = self.forward(data[0])
 
         predicted: Image = T.ToPILImage()(logits.sigmoid().numpy().squeeze())
 
         input.save("in.png")
-        target.save("out.png")
-        predicted.save("predicted.png")
+        target.save("mask.png")
+        predicted.save("out.png")
 
     def test_img(self, img_path: str):
         """
         Проверка модельки на существующей картинке
         :param img_path: путь к файлу
         """
-        pic = PIL.Image.open(img_path).resize((256, 256)).convert("RGB")
-        img = T.ToTensor()(pic)  # (C, H, W), float [0,1]
-        img = img.unsqueeze(0)  # (1, C, H, W) — батч из одной картинки
+        pic = PIL.Image.open(img_path).resize((256, 256))
+        img = T.ToTensor()(pic)
 
         self.model.eval()
         with torch.inference_mode():
             logits = self.forward(img)
 
         predicted = T.ToPILImage()(logits.sigmoid().squeeze())
-        predicted.save("predicted.png")
+        predicted.save("out.png")
 
     def save(self, path: str):
         """
