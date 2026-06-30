@@ -67,9 +67,9 @@ def _setup_parser(parser: argparse.ArgumentParser):
         help="Путь сохранения нейросети")
     parser.add_argument("--load_nn", type=str, default="nn",
         help="Путь загрузки нейросети")
-    parser.add_argument("--encoder", type=str, default="",
+    parser.add_argument("--encoder", type=str, default="efficientnet-b3",
         help="Какой энкодер использовать")
-    parser.add_argument("--loss", type=str, default="",
+    parser.add_argument("--loss", type=str, default="hard_loss",
         help="Какую функцию потерь использовать")
 
 
