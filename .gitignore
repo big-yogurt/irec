@@ -10,3 +10,4 @@ out.png
 predicted.png
 scaled.jpg
 test_hard_loss/
+model-tester/

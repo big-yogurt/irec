@@ -1,5 +1,5 @@
 from statistics import mean
-from typing import Any, Tuple
+from typing import Any, Tuple, Callable, Mapping
 
 import PIL.Image
 import cv2
@@ -30,9 +30,11 @@ class DMTrainModel(pl.LightningModule):
     Используемая модель
     """
 
-    loss_fn: DiceLoss
+    loss_fn: Callable[[Tensor, Tensor], Tensor]
     """ 
-    Функция, которая измеряет, насколько вычисления модели отклонились от настоящего результатата
+    Функция, которая измеряет, насколько вычисления модели отклонились от настоящего результатата.
+    Первый аргумент - предикт нейронки, второй - настоящая маска.
+    Возращает, скаляр, обозначающий, насколько сильно нейронка ошиблась.
     """
 
     validation_step_outputs: list[Any] = []
@@ -54,25 +56,37 @@ class DMTrainModel(pl.LightningModule):
     """
     число эпох * размер датасета, используется в оптимизаторе, во время обучения
     """
-    def __init__(self):
+    def __init__(
+            self,
+            encoder_name: str = "efficientnet-b3",
+            loss_fn: Callable[[Tensor, Tensor], Tensor] = hard_loss,
+            encoder_weights: str = "imagenet"
+    ):
+        """
+        Коснтруктор модельки
+        :param encoder_name: имя энкодера, полный список можно посмотреть в документации segmantation models
+        :param loss_fn: Функция, которая измеряет, насколько вычисления модели отклонились от настоящего результатата.
+        Первый аргумент - предикт нейронки, второй - настоящая маска.
+        Возращает, скаляр, обозначающий, насколько сильно нейронка ошиблась.
+        :param encoder_weights: имя весового энкодера, полный список можно посмотреть в документации segmantation models
+        """
         super().__init__()
         # Инициализация модельки
-        encoder_name = "efficientnet-b3"
         self.model = smp.UnetPlusPlus(
-            # TODO: Нужно поиграться с настройками
              encoder_name=encoder_name,
-             encoder_weights="imagenet",
+             encoder_weights=encoder_weights,
              in_channels=3,
              classes=1,
              activation=None,
              decoder_norm_layer=torch.nn.InstanceNorm2d,
         )
 
+        self.loss_fn = loss_fn
         # dice пойдет
         # self.loss_fn = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
 
         # самопал надо проверить работает вообще или нет
-        self.loss_fn = hard_loss
+        # self.loss_fn = hard_loss
         # mse выдает шлак на 50 эпох и 500 картинках
         #self.loss_fn = nn.MSELoss()
 
@@ -215,7 +229,13 @@ class DMTrainModel(pl.LightningModule):
             val_dataloaders=val_dataset,
         )
 
-
+    def test_metrics(self, dataset_len: int = 100) -> dict[str, float]:
+        """
+        Проверка модели на синтетическом датасете, возвращает метрики.
+        :return: Метрики модели.
+        """
+        trainer = pl.Trainer(max_epochs=1, log_every_n_steps=1, callbacks=RichProgressBar(leave=True))
+        return trainer.validate(self, dataloaders=DataLoader(DMSyntheticDataset(dataset_len=dataset_len), batch_size=64, shuffle=False, num_workers=6, ), verbose=False)[0]
 
     def test(self):
         """
