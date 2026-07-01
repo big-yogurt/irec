@@ -49,7 +49,7 @@ def make_img_realistic(img: np.ndarray) -> np.ndarray:
     if random.randint(1, 2) == 2:
         _add_scratches_to_img(img)
     _add_random_background_to_img(img)
-    img = np.clip(img.astype(np.float32) * np.random.uniform(0.4, 2), 0, 255)
+    img = np.clip(img.astype(np.float32) * np.random.uniform(0.4, 2), 0, 255) \
         .astype(np.uint8)
     final_transform = A.Compose([
         A.RandomBrightnessContrast(),
@@ -86,17 +86,19 @@ def _gen_img_background() -> np.ndarray:
     return np.random.normal(180, 10, (h, w, 3)).astype(np.uint8)
 
 
-def _add_scratches_to_img(img: np.ndarray, num_scratches=20, max_length=100):
+def _add_scratches_to_img(img: np.ndarray):
     """
     Добавляет случайные царапины на изображение. Работает только с чёрно-белым
     изображением datamatrix'а, т.к. царапины - белые полосы, которые затирают
     datamatrix.
     """
     h, w = img.shape[:2]
+    num_scratches = random.randint(10, 50)
+    max_length = random.randint(5, 100)
     for _ in range(num_scratches):
         x1, y1 = random.randint(0, w), random.randint(0, h)
         angle = random.uniform(0, 2 * np.pi)
-        length = random.randint(10, max_length)
+        length = random.randint(1, max_length)
         x2 = int(x1 + length * np.cos(angle))
         y2 = int(y1 + length * np.sin(angle))
         thickness = random.randint(1, 3)
