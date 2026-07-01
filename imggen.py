@@ -45,8 +45,12 @@ def make_img_realistic(img: np.ndarray) -> np.ndarray:
     """
     img = img.copy()
     if random.randint(1, 2) == 2:
+        img = 255 - img
+    if random.randint(1, 2) == 2:
         _add_scratches_to_img(img)
     _add_random_background_to_img(img)
+    img = np.clip(img.astype(np.float32) * np.random.uniform(0.4, 2), 0, 255)
+        .astype(np.uint8)
     final_transform = A.Compose([
         A.RandomBrightnessContrast(),
         A.RandomToneCurve(),
@@ -89,19 +93,13 @@ def _add_scratches_to_img(img: np.ndarray, num_scratches=20, max_length=100):
     datamatrix.
     """
     h, w = img.shape[:2]
-
     for _ in range(num_scratches):
-        # Случайные начальная и конечная точки
         x1, y1 = random.randint(0, w), random.randint(0, h)
         angle = random.uniform(0, 2 * np.pi)
         length = random.randint(10, max_length)
         x2 = int(x1 + length * np.cos(angle))
         y2 = int(y1 + length * np.sin(angle))
-
-        # Случайный цвет (от светлого до темного)
         thickness = random.randint(1, 3)
-
-        # Рисуем линию
         cv2.line(img, (x1, y1), (x2, y2), 255, thickness)
 
 
