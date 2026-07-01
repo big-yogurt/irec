@@ -93,8 +93,8 @@ class DMTrainModel(pl.LightningModule):
         # тоже не лучше
         # self.loss_fn = smp.losses.FocalLoss(mode="binary")
         params = smp.encoders.get_preprocessing_params(encoder_name)
-        self.mean = torch.tensor(params["std"]).view(1, 3, 1, 1)
-        self.std  = torch.tensor(params["mean"]).view(1, 3, 1, 1)
+        self.register_buffer('mean', torch.tensor(params["mean"]).view(1, 3, 1, 1))
+        self.register_buffer('std', torch.tensor(params["std"]).view(1, 3, 1, 1))
 
     ## Для pl.LightningModule
     def forward(self, data: Tensor):
@@ -103,8 +103,9 @@ class DMTrainModel(pl.LightningModule):
         :arg data Картинка, на основе которой нейронка делает предикт
         """
         # нормализация картиночки
-        image = (data - self.mean) / self.std
-        return self.model(image)
+        if data.ndim == 3:
+            data = data.unsqueeze(0)
+        return self.model(data)
 
     ## Для pl.LightningModule
     def training_step(self, batch: tuple[Tensor, Tensor], batch_idx: int):
@@ -217,9 +218,8 @@ class DMTrainModel(pl.LightningModule):
         Запуск тренировки модели
         """
         # Датасеты
-
-        train_dataset = DataLoader(DMSyntheticDataset(dataset_len=dataset_size), batch_size=64, shuffle=False, num_workers=6)
-        val_dataset = DataLoader(DMSyntheticDataset(dataset_len=dataset_size), batch_size=64, shuffle=False, num_workers=6, )
+        train_dataset = DataLoader(DMSyntheticDataset(dataset_len=dataset_size), batch_size=16, shuffle=False, num_workers=6, )
+        val_dataset = DataLoader(DMSyntheticDataset(dataset_len=dataset_size), batch_size=16, shuffle=False, num_workers=6, )
 
         trainer = pl.Trainer(max_epochs=epochs, log_every_n_steps=1, callbacks=RichProgressBar(leave=True))
 
@@ -235,7 +235,7 @@ class DMTrainModel(pl.LightningModule):
         :return: Метрики модели.
         """
         trainer = pl.Trainer(max_epochs=1, log_every_n_steps=1, callbacks=RichProgressBar(leave=True))
-        return trainer.validate(self, dataloaders=DataLoader(DMSyntheticDataset(dataset_len=dataset_len), batch_size=64, shuffle=False, num_workers=6, ), verbose=False)[0]
+        return trainer.validate(self, dataloaders=DataLoader(DMSyntheticDataset(dataset_len=dataset_len), batch_size=16, shuffle=False, num_workers=6, ), verbose=False)[0]
 
     def test(self):
         """
