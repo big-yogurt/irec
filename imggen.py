@@ -20,7 +20,7 @@ import pylibdmtx.pylibdmtx as dmtx
 DEFAULT_IMG_SIZE = (256, 256)
 
 
-def gen_random_dmtx(max_data_len: int = 64) -> np.ndarray:
+def gen_random_dmtx(max_data_len: int = 64) -> np.ndarray | None:
     """
     Генерирует datamatrix со случайными закодироваными данными. Возвращает в
     виде `np.ndarray` в RGB.
@@ -28,6 +28,19 @@ def gen_random_dmtx(max_data_len: int = 64) -> np.ndarray:
     """
     data_len = random.randint(1, max_data_len)
     data = random.randbytes(data_len)
+    return gen_dmtx(data)
+
+
+def gen_dmtx(data: bytes) -> np.ndarray | None:
+    """
+    Генерирует datamatrix со заданными данными. Возвращает в виде `np.ndarray`
+    в RGB.
+    Эта функция выдаёт маски, которые нейросеть должна давать на выходе.
+    Возвращает `None`, если количество байт больше 64. Ограниченно из-за
+    возможности выпадения исключения.
+    """
+    if len(data) > 64:
+        return None
     encoded = dmtx.encode(data)
     img = np.frombuffer(encoded.pixels, dtype=np.uint8)
     img = img.reshape(encoded.height, encoded.width, 3)
