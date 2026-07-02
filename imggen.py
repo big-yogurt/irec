@@ -48,6 +48,12 @@ def gen_dmtx(data: bytes) -> np.ndarray | None:
     return img
 
 
+def gen_random_img_pair() -> tuple[np.ndarray | None, np.ndarray | None]:
+    mask = gen_random_dmtx()
+    img = make_img_realistic(mask)
+    return mask, img
+
+
 def make_img_realistic(img: np.ndarray) -> np.ndarray:
     """
     Добавляет к `img` фон (предполагается, что изображение чёрно-белое. Белый
@@ -129,7 +135,6 @@ def _add_scratches_to_img(img: np.ndarray):
 
 if __name__ == "__main__":
     for i in range(10):
-        mask = gen_random_dmtx()
-        img = make_img_realistic(mask)
+        mask, img = gen_random_img_pair()
         cv2.imwrite(f"images/img{i}.png", img)
         cv2.imwrite(f"images/mask{i}.png", mask)

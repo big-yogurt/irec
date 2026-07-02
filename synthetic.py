@@ -14,6 +14,9 @@ class DMSyntheticDataset(Dataset):
 
     def __init__(self, dataset_len: int = 1000):
         self._dataset_len = dataset_len
+        self._pairs = tuple(imggen.gen_random_img_pair()
+            for _ in range(dataset_len)
+        )
 
     def __len__(self):
         """
@@ -21,15 +24,13 @@ class DMSyntheticDataset(Dataset):
         """
         return self._dataset_len
 
-    def __getitem__(self, _) -> tuple[Tensor, Tensor]:
+    def __getitem__(self, idx) -> tuple[Tensor, Tensor]:
         """
         Возвращает синтетические данные (изображения DM кодов в виде тензоров).
         Первый тензор - входное изображение, второй - маска сегментации.
         """
-        ideal_img = imggen.gen_random_dmtx()
-        damage_img = imggen.make_img_realistic(ideal_img)
+        ideal_img, damage_img = self._pairs[idx]
         ideal_gray = cv2.cvtColor(ideal_img, cv2.COLOR_RGB2GRAY)
         mask = to_tensor(ideal_gray)
         img = to_tensor(damage_img)
-        
         return img, mask
