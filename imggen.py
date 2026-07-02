@@ -62,19 +62,17 @@ def make_img_realistic(img: np.ndarray) -> np.ndarray:
     if random.randint(1, 2) == 2:
         _add_scratches_to_img(img)
     _add_random_background_to_img(img)
-    img = np.clip(img.astype(np.float32) * np.random.uniform(0.4, 2), 0, 255) \
-        .astype(np.uint8)
     final_transform = A.Compose([
-        A.RandomBrightnessContrast(),
-        A.RandomToneCurve(),
+        A.RandomBrightnessContrast(
+            brightness_range=(-0.3, 0.9),
+            contrast_range=(-0.3, 0.9),
+        ),
         A.MotionBlur(p=0.7),
-        A.RandomSunFlare(src_radius=200),
-        A.Perspective(scale=(0.005, 0.015)),
-        #A.WaterRefraction(
-        #    amplitude_range=(0.01, 0.02),
-        #    wavelength_range=(0.01, 0.02),
-        #    num_waves_range=(1, 1),
-        #),
+        A.RandomSunFlare(src_radius=100),
+        A.Perspective(scale=(0.005, 0.015), p=0.25),
+        A.ISONoise(),
+        A.GridElasticDeform(num_grid_xy=(5, 5), magnitude=2, p=0.25),
+        A.ElasticTransform(alpha=75, p=0.25),
     ])
     img = final_transform(image=img)['image']
     return img
@@ -135,45 +133,3 @@ if __name__ == "__main__":
         img = make_img_realistic(mask)
         cv2.imwrite(f"images/img{i}.png", img)
         cv2.imwrite(f"images/mask{i}.png", mask)
-
-
-from collections.abc import Generator
-
-
-def bezier(p1: np.ndarray, p2: np.ndarray, p3: np.ndarray) \
-        -> Generator[np.ndarray, None, None]:
-    def calc(t):
-        return t * t * p1 + 2 * t * (1 - t) * p2 + (1 - t) * (1 - t) * p3
-
-    # get the approximate pixel count of the curve
-    approx = cv2.arcLength(np.array([calc(t)[:2] for t in np.linspace(0, 1, 10)], dtype=np.float32), False)
-    for t in np.linspace(0, 1, round(approx * 1.2)):
-        yield np.round(calc(t)).astype(np.int32)
-
-
-def generate_scratch(img: np.ndarray, max_length: float,
-        end_brush_range: tuple[float, float],
-        mid_brush_range: tuple[float, float]) -> np.ndarray:
-    H, W = img.shape
-    # generate the 2 end points of the bezier curve
-    x, y, rho1, theta1 = np.random.uniform(
-        [0] * 4, [W, H, max_length, np.pi * 2]
-    )
-    p1 = np.array([x, y, 0])
-    p3 = p1 + [rho1 * np.cos(theta1), rho1 * np.sin(theta1), 0]
-
-    # generate the second point, make sure that it cannot be too far away from
-    # the middle point of the 2 end points
-    rho2, theta2 = np.random.uniform([0], [rho1 / 2, np.pi * 2])
-    p2 = (p1 + p3) / 2 + [rho2 * np.cos(theta2), rho2 * np.sin(theta2), 0]
-
-    # generate the brush sizes of the 3 points
-    p1[2], p2[2], p3[2] = np.random.uniform(
-        *np.transpose([end_brush_range, mid_brush_range, end_brush_range])
-    )
-
-    for x, y, brush in bezier(p1, p2, p3):
-        cv2.circle(img, (x, y), brush, 255, -1)
-    return img
-
-
