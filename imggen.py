@@ -44,7 +44,6 @@ def gen_dmtx(data: bytes) -> np.ndarray | None:
     encoded = dmtx.encode(data)
     img = np.frombuffer(encoded.pixels, dtype=np.uint8)
     img = img.reshape(encoded.height, encoded.width, 3)
-    img = cv2.resize(img, (256, 256), interpolation=cv2.INTER_AREA)
     return img
 
 
@@ -64,6 +63,12 @@ def make_img_realistic(img: np.ndarray) -> np.ndarray:
     """
     img = img.copy()
     if random.randint(1, 2) == 2:
+        for y in range(0, img.shape[0], 5):
+            img[y:y+1, :] = 255
+        for x in range(0, img.shape[1], 5):
+            img[:, x:x+1] = 255
+    img = cv2.resize(img, (256, 256), interpolation=cv2.INTER_NEAREST)
+    if random.randint(1, 2) == 2:
         img = 255 - img
     if random.randint(1, 2) == 2:
         _add_scratches_to_img(img)
@@ -75,10 +80,10 @@ def make_img_realistic(img: np.ndarray) -> np.ndarray:
         ),
         A.MotionBlur(p=0.7),
         A.RandomSunFlare(src_radius=100),
-        A.Perspective(scale=(0.005, 0.015), p=0.25),
+        A.Perspective(scale=(0.001, 0.01), fit_output=True, p=0.25),
         A.ISONoise(),
         A.GridElasticDeform(num_grid_xy=(5, 5), magnitude=2, p=0.25),
-        A.ElasticTransform(alpha=75, p=0.25),
+        A.ElasticTransform(alpha=20, p=0.25),
     ])
     img = final_transform(image=img)['image']
     return img
