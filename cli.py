@@ -37,6 +37,12 @@ def parse_cli() -> argparse.Namespace:
     )
     _setup_syn_test_parser(syn_test_parser)
 
+    # Команда 'gen_ds'
+    gen_ds_parser = subparsers.add_parser("gen_ds",
+        help="Генерация синтетического датасета"
+    )
+    _setup_gen_ds_parser(gen_ds_parser)
+
 
     return parser.parse_args()
 
@@ -97,3 +103,14 @@ def _setup_train_parser(train_parser: argparse.ArgumentParser):
     """
     train_parser.add_argument("--epoch", type=int, help="Количество эпох")
     train_parser.add_argument("--path", type=str, help="Путь к датасету")
+
+
+def _setup_gen_ds_parser(parser: argparse.ArgumentParser):
+    """
+    Настройка флагов для команды 'gen_ds'
+    """
+    parser.add_argument("--path", type=str, help="Путь сохранения датасета",
+        default="datasets/")
+    parser.add_argument("--len", type=int, default=5000,
+        help="Количество пар изображений в датасете"
+    )
