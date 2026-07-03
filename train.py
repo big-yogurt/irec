@@ -52,6 +52,11 @@ class DMTrainModel(pl.LightningModule):
     Стандартное отклонение для нормализации изображения
     """
 
+    lr: float
+    """
+    Learning rate - для тюнинга процесса обучения
+    """
+
     T_MAX: int = -1
     """
     число эпох * размер датасета, используется в оптимизаторе, во время обучения
@@ -218,7 +223,7 @@ class DMTrainModel(pl.LightningModule):
         """
         Параметры оптимизации модели во время её обучения
         """
-        optimizer = torch.optim.Adam(self.parameters(), lr=5e-4)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.T_MAX, eta_min=1e-5)
         return {
             "optimizer": optimizer,
@@ -229,14 +234,16 @@ class DMTrainModel(pl.LightningModule):
             },
         }
 
-    def start_training(self, epochs: int, dataset_size: int):
+    def start_training(self, epochs: int, dataset_size: int, lr: float = 5e-4):
         """
         Запуск тренировки модели
         """
+        self.lr = lr
+        self.model.train()
         self.T_MAX = epochs * (dataset_size // 32)
         # Датасеты
         train_dataset = DataLoader(DMSyntheticDataset(dataset_len=dataset_size), batch_size=32, shuffle=True, num_workers=6, )
-        val_dataset = DataLoader(DMSyntheticDataset(dataset_len=dataset_size), batch_size=32, shuffle=True, num_workers=6, )
+        val_dataset = DataLoader(DMSyntheticDataset(dataset_len=dataset_size), batch_size=32, num_workers=6, )
 
         trainer = pl.Trainer(max_epochs=epochs, log_every_n_steps=1, callbacks=RichProgressBar(leave=True))
         trainer.fit(

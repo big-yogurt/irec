@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from torch import Tensor
-
+import torch.nn.functional as F
 
 def hard_loss(predict, target) -> Tensor:
     """
@@ -12,12 +12,29 @@ def hard_loss(predict, target) -> Tensor:
     """
     prob = torch.sigmoid(predict)
 
-    bce =  torch.nn.functional.binary_cross_entropy_with_logits(predict, target)
+    # 1. BCE — базовая классификация пикселей
+    bce = F.binary_cross_entropy_with_logits(predict, target)
 
-    uncertainty = 1 - torch.abs(prob * 2 - 1)
-    uncertainty_penalty = uncertainty.mean()
+    # 2. Dice loss — штраф за нечёткое перекрытие регионов,
+    # естественно продвигает чёткие границы
+    smooth = 1e-6
+    p_flat = prob.view(-1)
+    t_flat = target.view(-1)
+    intersection = (p_flat * t_flat).sum()
+    dice = 1 - (2 * intersection + smooth) / (p_flat.sum() + t_flat.sum() + smooth)
 
-    return bce + 0.5 * uncertainty_penalty
+    # 3. Uncertainty — штраф за пиксели застрявшие у 0.5
+    uncertainty = (prob * (1 - prob)).mean() * 4  # *4 нормализует в диапазон 0..1
+
+    # 4. Sharpness — штраф за "мягкие" переходы между соседними пикселями
+    # g*(1-g) максимально при g=0.5, равно 0 при g=0 или g=1
+    # то есть наказываем промежуточные переходы, а не резкие или плоские
+    dx = (prob[:, :, :, 1:] - prob[:, :, :, :-1]).abs()  # горизонтальный градиент
+    dy = (prob[:, :, 1:, :] - prob[:, :, :-1, :]).abs()  # вертикальный градиент
+    grad = torch.cat([dx.reshape(-1), dy.reshape(-1)])
+    sharpness_penalty = (grad * (1 - grad)).mean()
+
+    return bce + dice + uncertainty + 0.3 * sharpness_penalty
 
 
 loss_function_table = {
