@@ -50,6 +50,7 @@ def gen_dmtx(data: bytes) -> np.ndarray | None:
 def gen_random_img_pair() -> tuple[np.ndarray | None, np.ndarray | None]:
     mask = gen_random_dmtx()
     img = make_img_realistic(mask)
+    mask = cv2.resize(mask, (256, 256), interpolation=cv2.INTER_NEAREST)
     return mask, img
 
 
