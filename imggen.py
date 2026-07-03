@@ -51,7 +51,7 @@ def gen_random_img_pair() -> tuple[np.ndarray | None, np.ndarray | None]:
     mask = gen_random_dmtx()
     img = make_img_realistic(mask)
     mask = cv2.resize(mask, (256, 256), interpolation=cv2.INTER_NEAREST)
-    return mask, img
+    return img, mask
 
 
 def make_img_realistic(img: np.ndarray) -> np.ndarray:
@@ -141,6 +141,6 @@ def _add_scratches_to_img(img: np.ndarray):
 
 if __name__ == "__main__":
     for i in range(10):
-        mask, img = gen_random_img_pair()
+        img, mask = gen_random_img_pair()
         cv2.imwrite(f"images/img{i}.png", img)
         cv2.imwrite(f"images/mask{i}.png", mask)

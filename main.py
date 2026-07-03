@@ -31,9 +31,9 @@ def command_gen_ds(cli_flags: argparse.Namespace):
     import cv2
     import imggen
     for i in range(cli_flags.len):
-        mask, img = imggen.gen_random_img_pair()
-        cv2.imwrite(masks_path + "/" + str(i) + ".png", mask)
+        img, mask = imggen.gen_random_img_pair()
         cv2.imwrite(imgs_path + "/" + str(i) + ".png", img)
+        cv2.imwrite(masks_path + "/" + str(i) + ".png", mask)
 
 
 def command_run(cli_flags: argparse.Namespace):
