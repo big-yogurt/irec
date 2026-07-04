@@ -13,12 +13,6 @@ def parse_cli() -> argparse.Namespace:
     run_parser = subparsers.add_parser("run", help="Запуск сервиса")
     _setup_run_parser(run_parser)
 
-    # Команда 'syn_train'
-    syn_train_parser = subparsers.add_parser("syn_train",
-        help="Обучение модели на синтетических данных"
-    )
-    _setup_syn_train_parser(syn_train_parser)
-
     # Команда 'train'
     train_parser = subparsers.add_parser("train",
         help="Обучение модели на готовых данных"
@@ -69,9 +63,9 @@ def _setup_parser(parser: argparse.ArgumentParser):
     """
     Настройка флагов для всех команд
     """
-    parser.add_argument("--save_nn", type=str, default="nn",
+    parser.add_argument("--save_nn", type=str, default="nn/",
         help="Путь сохранения нейросети")
-    parser.add_argument("--load_nn", type=str, default="nn",
+    parser.add_argument("--load_nn", type=str, default=None,
         help="Путь загрузки нейросети")
     parser.add_argument("--encoder", type=str, default="efficientnet-b3",
         help="Какой энкодер использовать")
@@ -101,8 +95,21 @@ def _setup_train_parser(train_parser: argparse.ArgumentParser):
     """
     Настройка флагов для команды 'train'
     """
-    train_parser.add_argument("--epoch", type=int, help="Количество эпох")
-    train_parser.add_argument("--path", type=str, help="Путь к датасету")
+    train_parser.add_argument("--epoch", type=int, default=100,
+        help="Количество эпох"
+    )
+    train_parser.add_argument("--batch", type=int, default=32,
+        help="Размер батча"
+    )
+    train_parser.add_argument("--train_ds_path", type=str, required=True,
+        help="Путь к датасету для обучения"
+    )
+    train_parser.add_argument("--val_ds_path", type=str, required=True,
+        help="Путь к датасету для валидации"
+    )
+    train_parser.add_argument("--num_workers", type=int, default=6,
+        help="Количество дочерних процессов для загрузки данных"
+    )
 
 
 def _setup_gen_ds_parser(parser: argparse.ArgumentParser):

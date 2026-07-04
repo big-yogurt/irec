@@ -236,18 +236,18 @@ class DMTrainModel(pl.LightningModule):
             },
         }
 
-    def start_training(self, epochs: int, train_dataset: Dataset, validation_dataset: Dataset, lr: float = 5e-4) -> bool:
+    def start_training(self, epochs: int, batch_size: int, num_workers: int, train_dataset: Dataset, validation_dataset: Dataset, lr: float = 5e-4) -> bool:
         """
         Запуск тренировки модели
         :return: Успешно ли прошло обучение (не было ли краша в процессе)
         """
         self.lr = lr
         self.model.train()
-        self.T_MAX = epochs * (len(train_dataset) // 32)
+        self.T_MAX = epochs * (len(train_dataset) // batch_size)
         # Датасеты
         try:
-            train_dataset = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=6, )
-            val_dataset = DataLoader(validation_dataset, batch_size=32, num_workers=6, )
+            train_dataset = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers, )
+            val_dataset = DataLoader(validation_dataset, batch_size=batch_size, num_workers=num_workers, )
             trainer = pl.Trainer(max_epochs=epochs, log_every_n_steps=1, callbacks=RichProgressBar(leave=True))
             trainer.fit(
                 self,

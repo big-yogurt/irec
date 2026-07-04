@@ -1,4 +1,5 @@
 import os
+import sys
 import argparse
 from datetime import datetime
 
@@ -10,8 +11,6 @@ def main():
     match cli_flags.command:
         case "run":
             command_run(cli_flags)
-        case "syn_train":
-            command_syn_train(cli_flags)
         case "train":
             command_train(cli_flags)
         case "test":
@@ -41,15 +40,28 @@ def command_run(cli_flags: argparse.Namespace):
     ...
 
 
-def command_syn_train(cli_flags: argparse.Namespace):
-    import train
-    model = train.DMTrainModel()
-    model.start_training(cli_flags.epoch, cli_flags.dataset_len)
-    model.save(cli_flags.save_nn)
-
-
 def command_train(cli_flags: argparse.Namespace):
-    ...
+    if not os.path.isdir(cli_flags.train_ds_path):
+        print(f"Файл датасета '{cli_flags.train_ds_path}' не найден")
+        sys.exit(1)
+    if not os.path.isdir(cli_flags.val_ds_path):
+        print(f"Файл датасета '{cli_flags.val_ds_path}' не найден")
+        sys.exit(1)
+    import train
+    import synthetic
+    model = train.DMTrainModel()
+    if cli_flags.load_nn is not None:
+        model.load(cli_flags.load_nn)
+    model.start_training(
+        cli_flags.epoch,
+        cli_flags.batch,
+        cli_flags.num_workers,
+        synthetic.DMPreloadedDataset(cli_flags.train_ds_path),
+        synthetic.DMPreloadedDataset(cli_flags.val_ds_path),
+    )
+    model.save(cli_flags.save_nn + "/" +
+        datetime.now().strftime("%d%m%y_%H%M%S")
+    )
 
 
 def command_test(cli_flags: argparse.Namespace):
