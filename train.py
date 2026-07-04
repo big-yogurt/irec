@@ -1,3 +1,4 @@
+from logging import Logger
 from statistics import mean
 from typing import Any, Tuple, Callable, Mapping, LiteralString, Literal, Optional
 
@@ -19,6 +20,7 @@ from synthetic import DMSyntheticDataset
 from pytorch_lightning.callbacks import RichProgressBar
 import torchvision.transforms as T
 from PIL.Image import Image
+from torch.utils.data import Dataset
 
 class DMTrainModel(pl.LightningModule):
     """
@@ -234,32 +236,37 @@ class DMTrainModel(pl.LightningModule):
             },
         }
 
-    def start_training(self, epochs: int, dataset_size: int, lr: float = 5e-4):
+    def start_training(self, epochs: int, train_dataset: Dataset, validation_dataset: Dataset, lr: float = 5e-4) -> bool:
         """
         Запуск тренировки модели
+        :return: Успешно ли прошло обучение (не было ли краша в процессе)
         """
         self.lr = lr
         self.model.train()
-        self.T_MAX = epochs * (dataset_size // 32)
+        self.T_MAX = epochs * (len(train_dataset) // 32)
         # Датасеты
-        train_dataset = DataLoader(DMSyntheticDataset(dataset_len=dataset_size), batch_size=32, shuffle=True, num_workers=6, )
-        val_dataset = DataLoader(DMSyntheticDataset(dataset_len=dataset_size), batch_size=32, num_workers=6, )
+        try:
+            train_dataset = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=6, )
+            val_dataset = DataLoader(validation_dataset, batch_size=32, num_workers=6, )
+            trainer = pl.Trainer(max_epochs=epochs, log_every_n_steps=1, callbacks=RichProgressBar(leave=True))
+            trainer.fit(
+                self,
+                train_dataloaders=train_dataset,
+                val_dataloaders=val_dataset,
+            )
+            return True
+        except Exception as e:
+            Logger.error(f"[Ошибка:] {e}, была заглушена.")
+        return False
 
-        trainer = pl.Trainer(max_epochs=epochs, log_every_n_steps=1, callbacks=RichProgressBar(leave=True))
-        trainer.fit(
-            self,
-            train_dataloaders=train_dataset,
-            val_dataloaders=val_dataset,
-        )
 
-
-    def test_metrics(self, dataset_len: int = 100) -> dict[str, float]:
+    def test_metrics(self, dataset: Dataset) -> dict[str, float]:
         """
         Проверка модели на синтетическом датасете, возвращает метрики.
         :return: Метрики модели.
         """
         trainer = pl.Trainer(max_epochs=1, log_every_n_steps=1, callbacks=RichProgressBar(leave=True))
-        return trainer.validate(self, dataloaders=DataLoader(DMSyntheticDataset(dataset_len=dataset_len), batch_size=32, shuffle=True, num_workers=6, ), verbose=False)[0]
+        return trainer.validate(self, dataloaders=DataLoader(dataset, batch_size=32, shuffle=True, num_workers=6, ), verbose=False)[0]
 
     def test(self):
         """

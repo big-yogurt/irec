@@ -1,6 +1,7 @@
 import csv
 import itertools
 import os.path
+from logging import Logger
 from os import mkdir
 from typing import List, Optional, Callable, Any
 
@@ -86,13 +87,15 @@ class DMModelTester():
         i = 0
         csv_data = []
         for t in itertools.product(encoder_name, loss_fn, encoder_weights):
-            print(f"Обрабатываем {i}/{len(encoder_weights) * len(encoder_name) * len(loss_fn)} вариантов")
+            Logger.info(f"{"-"*50}")
+            Logger.info(f"Обрабатываем {i}/{len(encoder_weights) * len(encoder_name) * len(loss_fn)} вариантов")
+            Logger.info(f"{"-"*50}")
             kwargs = {
                 "encoder_weights": t[0],
                 "loss_fn": t[1],
                 "encoder_name": t[2],
             }
-            metrics, model = self._test_nn(**kwargs)
+            metrics, model, is_error = self._test_nn(**kwargs)
             out_path = f"{self._output_folder}/model_test_{i}"
 
             out_str = self._convert_to_string(**{
@@ -102,7 +105,8 @@ class DMModelTester():
                 "test_id": i,
                 "epochs": self._epochs,
                 "validation_dataset_len": self._validation_dataset_len,
-                "train_dataset_len": self._train_dataset_len
+                "train_dataset_len": self._train_dataset_len,
+                "is_error": is_error
             })
             model.save(out_path)
             csv_data.append(out_str)
@@ -121,18 +125,18 @@ class DMModelTester():
             writer.writeheader()
             writer.writerows(data)
 
-    def _test_nn(self, **kwargs) -> tuple[dict[str, Any], DMTrainModel]:
+    def _test_nn(self, **kwargs) -> tuple[dict[str, Any], DMTrainModel, bool]:
         """
         Делает один прогон нейросетки и возвращает результаты.
-        :return: Кортеж с Метриками с прогона и моделью.
+        :return: Кортеж с Метриками с прогона, модель, и завершилась ли обучение без ошибок или с ошибками.
         """
         model = DMTrainModel(
             encoder_name= kwargs.get("encoder_weights", "efficientnet-b3") or "efficientnet-b3",
             loss_fn= kwargs.get("loss_fn", loss.hard_loss) or loss.hard_loss,
             encoder_weights= kwargs.get("encoder_name", "imagenet") or "imagenet"
         )
-        model.start_training(self._epochs, self._train_dataset_len)
-        return model.test_metrics(self._validation_dataset_len), model
+        is_error = not model.start_training(self._epochs, self._train_dataset_len)
+        return model.test_metrics(self._validation_dataset_len), model, is_error
 
     def _convert_to_string(self, **kwargs) -> dict[str, str]:
         """
