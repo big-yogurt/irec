@@ -1,4 +1,3 @@
-from logging import Logger
 from statistics import mean
 from typing import Any, Tuple, Callable, Mapping, LiteralString, Literal, Optional
 
@@ -21,6 +20,7 @@ from pytorch_lightning.callbacks import RichProgressBar
 import torchvision.transforms as T
 from PIL.Image import Image
 from torch.utils.data import Dataset
+from pytorch_lightning.callbacks import EarlyStopping
 
 class DMTrainModel(pl.LightningModule):
     """
@@ -246,9 +246,15 @@ class DMTrainModel(pl.LightningModule):
         self.T_MAX = epochs * (len(train_dataset) // batch_size)
         # Датасеты
         try:
+            early_stop = EarlyStopping(
+                monitor="loss",
+                patience=7,
+                mode="max",
+                verbose=True,
+            )
             train_dataset = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers, )
             val_dataset = DataLoader(validation_dataset, batch_size=batch_size, num_workers=num_workers, )
-            trainer = pl.Trainer(max_epochs=epochs, log_every_n_steps=1, callbacks=RichProgressBar(leave=True))
+            trainer = pl.Trainer(max_epochs=epochs, log_every_n_steps=1, callbacks=[RichProgressBar(leave=True), early_stop])
             trainer.fit(
                 self,
                 train_dataloaders=train_dataset,
@@ -256,7 +262,7 @@ class DMTrainModel(pl.LightningModule):
             )
             return True
         except Exception as e:
-            Logger.error(f"[Ошибка:] {e}, была заглушена.")
+            print(f"[Ошибка:] {e}, была заглушена.")
         return False
 
 

@@ -1,7 +1,6 @@
 import csv
 import itertools
 import os.path
-from logging import Logger
 from os import mkdir
 from typing import List, Optional, Callable, Any
 
@@ -87,9 +86,9 @@ class DMModelTester():
         i = 0
         csv_data = []
         for t in itertools.product(encoder_name, loss_fn, encoder_weights):
-            Logger.info(f"{"-"*50}")
-            Logger.info(f"Обрабатываем {i}/{len(encoder_weights) * len(encoder_name) * len(loss_fn)} вариантов")
-            Logger.info(f"{"-"*50}")
+            print(f"{"-"*50}")
+            print(f"Обрабатываем {i}/{len(encoder_weights) * len(encoder_name) * len(loss_fn)} вариантов")
+            print(f"{"-"*50}")
             kwargs = {
                 "encoder_weights": t[0],
                 "loss_fn": t[1],
