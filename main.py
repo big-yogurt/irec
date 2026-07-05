@@ -1,9 +1,11 @@
 import os
 import sys
+import asyncio
 import argparse
 from datetime import datetime
 
 import cli
+import server
 
 
 def main():
@@ -36,8 +38,7 @@ def command_gen_ds(cli_flags: argparse.Namespace):
 
 
 def command_run(cli_flags: argparse.Namespace):
-    # TODO: реализовать запуск нейросети и получение данных через сеть
-    ...
+    asyncio.run(server.serve())
 
 
 def command_train(cli_flags: argparse.Namespace):
