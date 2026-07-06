@@ -1,3 +1,4 @@
+import json
 import logging
 
 import cv2
@@ -6,12 +7,20 @@ import grpc
 import irec_pb2
 import irec_pb2_grpc
 
+
 logging.basicConfig(level=logging.INFO)
 
+
+def load_config(config_path: str) -> dict:
+    with open(config_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 async def serve() -> None:
+    config = load_config("config.json")
     server = grpc.aio.server()
     irec_pb2_grpc.add_IrecServicer_to_server(ImageRecoveryServicer(), server)
-    listen_addr = "[::]:50051"
+    listen_addr = f"{config['server']['host']}:{config['server']['port']}"
     server.add_insecure_port(listen_addr)
     logging.info("Starting server on %s", listen_addr)
     await server.start()
