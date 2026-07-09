@@ -1,11 +1,21 @@
+import io
 import json
 import logging
 
+import PIL.Image
+from PIL import Image
 import cv2
+import torch
+import torch.nn
 import numpy as np
 import grpc
 import irec_pb2
 import irec_pb2_grpc
+import torchvision.transforms as T
+import segmentation_models_pytorch as smp
+from torchvision.transforms.functional import to_tensor
+
+import train
 
 
 logging.basicConfig(level=logging.INFO)
@@ -16,10 +26,12 @@ def load_config(config_path: str) -> dict:
         return json.load(f)
 
 
-async def serve() -> None:
+async def serve(path_to_nn: str) -> None:
     config = load_config("config.json")
     server = grpc.aio.server()
-    irec_pb2_grpc.add_IrecServicer_to_server(ImageRecoveryServicer(), server)
+    irec_pb2_grpc.add_IrecServicer_to_server(
+        ImageRecoveryServicer(path_to_nn), server
+    )
     listen_addr = f"{config['server']['host']}:{config['server']['port']}"
     server.add_insecure_port(listen_addr)
     logging.info("Starting server on %s", listen_addr)
@@ -28,11 +40,17 @@ async def serve() -> None:
 
 
 ext_map = {
-    "image/webp": ".webp",
+    "image/webp": "WEBP",
+    "image/png": "PNG",
+    "image/jpeg": "JPG",
 }
 
 
 class ImageRecoveryServicer(irec_pb2_grpc.IrecServicer):
+    def __init__(self, path_to_nn: str):
+        self.model = train.DMTrainModel()
+        self.model.load(path_to_nn)
+
     async def RecoveryImage(self, request: irec_pb2.RecoveryRequest,
             context: grpc.ServicerContext) -> irec_pb2.RecoveryResponse:
         ext = ext_map.get(request.mime_type)
@@ -40,17 +58,11 @@ class ImageRecoveryServicer(irec_pb2_grpc.IrecServicer):
             context.abort(grpc.StatusCode.INVALID_ARGUMENT,
                 "Формат изображения не поддерживается"
             )
-        img = np.frombuffer(request.image, np.uint8)
-        img = cv2.imdecode(img, cv2.IMREAD_UNCHANGED)
-        if img is None:
-            context.abort(grpc.StatusCode.INVALID_ARGUMENT,
-                "Некорректные данные изображения"
-            )
-        # TODO: обработка изображения
-        # img = ...
-        ok, img = cv2.imencode(ext, img)
-        if not ok:
-            context.abort(grpc.StatusCode.INTERNAL,
-                "Ошибка кодировки изображения"
-            )
-        return irec_pb2.RecoveryResponse(image=img, mime_type=request.mime_type)
+        img = await self._recover_img(request.image)
+        buffer = io.BytesIO()
+        img.save(buffer, format=ext)
+        
+        return irec_pb2.RecoveryResponse(image=buffer.getvalue(), mime_type=request.mime_type)
+
+    async def _recover_img(self, img: bytes) -> Image:
+        return self.model.test_img(img)

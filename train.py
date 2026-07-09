@@ -1,6 +1,7 @@
 from statistics import mean
 from typing import Any, Tuple, Callable, Mapping, LiteralString, Literal, Optional
 
+import io
 import PIL.Image
 import cv2
 import numpy as np
@@ -246,15 +247,15 @@ class DMTrainModel(pl.LightningModule):
         self.T_MAX = epochs * (len(train_dataset) // batch_size)
         # Датасеты
         try:
-            early_stop = EarlyStopping(
-                monitor="loss",
-                patience=7,
-                mode="max",
-                verbose=True,
-            )
+            #early_stop = EarlyStopping(
+            #    monitor="loss",
+            #    patience=7,
+            #    mode="max",
+            #    verbose=True,
+            #)
             train_dataset = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers, )
             val_dataset = DataLoader(validation_dataset, batch_size=batch_size, num_workers=num_workers, )
-            trainer = pl.Trainer(max_epochs=epochs, log_every_n_steps=1, callbacks=[RichProgressBar(leave=True), early_stop])
+            trainer = pl.Trainer(max_epochs=epochs, log_every_n_steps=1, callbacks=[RichProgressBar(leave=True)])
             trainer.fit(
                 self,
                 train_dataloaders=train_dataset,
@@ -297,20 +298,21 @@ class DMTrainModel(pl.LightningModule):
         target.save("mask.png")
         predicted.save("out.png")
 
-    def test_img(self, img_path: str):
+    def test_img(self, img: bytes) -> Image:
         """
         Проверка модельки на существующей картинке
         :param img_path: путь к файлу
         """
-        pic = PIL.Image.open(img_path).resize((256, 256))
+        pic = PIL.Image.open(io.BytesIO(img)).convert("L").convert("RGB").resize((256, 256))
         img = T.ToTensor()(pic)
 
         self.model.eval()
         with torch.inference_mode():
             logits = self.forward(img)
 
+        buffer = io.BytesIO()
         predicted = T.ToPILImage()(logits.sigmoid().squeeze())
-        predicted.save("out.png")
+        return predicted
 
     def save(self, path: str):
         """
