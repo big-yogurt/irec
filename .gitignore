@@ -20,4 +20,9 @@ datasets/
 irec_pb2.py
 irec_pb2.pyi
 irec_pb2_grpc.py
+dataset_yolo/
+DATASET_V2/
 nn/
+out/
+runs/
+test_d/

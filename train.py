@@ -1,7 +1,7 @@
+import io
 from statistics import mean
 from typing import Any, Tuple, Callable, Mapping, LiteralString, Literal, Optional
 
-import io
 import PIL.Image
 import cv2
 import numpy as np
@@ -15,6 +15,7 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 from torch.optim import lr_scheduler
 
+from adaptive_grid import postprocess
 from loss import hard_loss
 from synthetic import DMSyntheticDataset
 from pytorch_lightning.callbacks import RichProgressBar
@@ -22,6 +23,7 @@ import torchvision.transforms as T
 from PIL.Image import Image
 from torch.utils.data import Dataset
 from pytorch_lightning.callbacks import EarlyStopping
+
 
 class DMTrainModel(pl.LightningModule):
     """
@@ -48,7 +50,7 @@ class DMTrainModel(pl.LightningModule):
     mean: Tensor
     """
     Среднее для нормализации изображения
-    
+
     """
     std: Tensor
     """
@@ -64,6 +66,7 @@ class DMTrainModel(pl.LightningModule):
     """
     число эпох * размер датасета, используется в оптимизаторе, во время обучения
     """
+
     def __init__(
             self,
             encoder_name: str = "efficientnet-b3",
@@ -88,12 +91,12 @@ class DMTrainModel(pl.LightningModule):
         # Инициализация модельки
         if (unet_version == "unet"):
             self.model = smp.Unet(
-                 encoder_name=encoder_name,
-                 encoder_weights=encoder_weights,
-                 in_channels=3,
-                 classes=1,
-                 activation=None,
-                 decoder_norm_layer=torch.nn.InstanceNorm2d,
+                encoder_name=encoder_name,
+                encoder_weights=encoder_weights,
+                in_channels=3,
+                classes=1,
+                activation=None,
+                decoder_norm_layer=torch.nn.InstanceNorm2d,
             )
         else:
             self.model = smp.UnetPlusPlus(
@@ -112,7 +115,7 @@ class DMTrainModel(pl.LightningModule):
         # самопал надо проверить работает вообще или нет
         # self.loss_fn = hard_loss
         # mse выдает шлак на 50 эпох и 500 картинках
-        #self.loss_fn = nn.MSELoss()
+        # self.loss_fn = nn.MSELoss()
 
         # тоже не лучше
         # self.loss_fn = smp.losses.FocalLoss(mode="binary")
@@ -237,7 +240,8 @@ class DMTrainModel(pl.LightningModule):
             },
         }
 
-    def start_training(self, epochs: int, batch_size: int, num_workers: int, train_dataset: Dataset, validation_dataset: Dataset, lr: float = 5e-4) -> bool:
+    def start_training(self, epochs: int, batch_size: int, num_workers: int, train_dataset: Dataset,
+                       validation_dataset: Dataset, lr: float = 5e-4) -> bool:
         """
         Запуск тренировки модели
         :return: Успешно ли прошло обучение (не было ли краша в процессе)
@@ -266,14 +270,14 @@ class DMTrainModel(pl.LightningModule):
             print(f"[Ошибка:] {e}, была заглушена.")
         return False
 
-
     def test_metrics(self, dataset: Dataset) -> dict[str, float]:
         """
         Проверка модели на синтетическом датасете, возвращает метрики.
         :return: Метрики модели.
         """
         trainer = pl.Trainer(max_epochs=1, log_every_n_steps=1, callbacks=RichProgressBar(leave=True))
-        return trainer.validate(self, dataloaders=DataLoader(dataset, batch_size=32, shuffle=True, num_workers=6, ), verbose=False)[0]
+        return trainer.validate(self, dataloaders=DataLoader(dataset, batch_size=32, shuffle=True, num_workers=6, ),
+                                verbose=False)[0]
 
     def test(self):
         """
@@ -296,12 +300,21 @@ class DMTrainModel(pl.LightningModule):
 
         input.save("in.png")
         target.save("mask.png")
+
+        predicted = T.ToPILImage()(postprocess(logits.sigmoid().squeeze()))
         predicted.save("out.png")
+
+        from yolo_crop import YoloCropModel
+        model = YoloCropModel("./runs/obb/train/weights/best.pt")
+        cropped = T.ToPILImage()(model.crop(logits.sigmoid().squeeze()))
+        cropped.save("cropped.png")
+        T.ToPILImage()(postprocess(logits.sigmoid().squeeze())).save("postprocessed.png")
 
     def test_img(self, img: bytes) -> Image:
         """
         Проверка модельки на существующей картинке
         :param img_path: путь к файлу
+        :return: Картинка - постобработанное, обрезанное YOLO, предсказание нейронки
         """
         pic = PIL.Image.open(io.BytesIO(img)).convert("L").convert("RGB").resize((256, 256))
         img = T.ToTensor()(pic)
@@ -310,9 +323,14 @@ class DMTrainModel(pl.LightningModule):
         with torch.inference_mode():
             logits = self.forward(img)
 
-        buffer = io.BytesIO()
-        predicted = T.ToPILImage()(logits.sigmoid().squeeze())
-        return predicted
+        from yolo_crop import YoloCropModel
+        model = YoloCropModel("./runs/obb/train/weights/best.pt")
+        pp = postprocess(logits.sigmoid().squeeze())
+        predicted = T.ToPILImage()(pp)
+
+        cropped = T.ToPILImage()(model.crop(pp))
+
+        return cropped
 
     def save(self, path: str):
         """

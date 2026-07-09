@@ -69,7 +69,7 @@ def command_test(cli_flags: argparse.Namespace):
     import train
     model = train.DMTrainModel()
     model.load(cli_flags.load_nn)
-    model.test_img(cli_flags.path_to_image)
+    model.test_img(open(cli_flags.path_to_image, "rb").read()).save("out.png")
 
 
 def command_syn_test(cli_flags: argparse.Namespace):
