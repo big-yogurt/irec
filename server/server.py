@@ -2,18 +2,10 @@ import io
 import json
 import logging
 
-import PIL.Image
 from PIL import Image
-import cv2
-import torch
-import torch.nn
-import numpy as np
 import grpc
-import irec_pb2
-import irec_pb2_grpc
-import torchvision.transforms as T
-import segmentation_models_pytorch as smp
-from torchvision.transforms.functional import to_tensor
+from . import irec_pb2
+from . import irec_pb2_grpc
 
 import train
 
