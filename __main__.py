@@ -1,5 +1,6 @@
 import os
 import sys
+import random
 import asyncio
 import argparse
 from datetime import datetime
@@ -31,7 +32,9 @@ def command_gen_ds(cli_flags: argparse.Namespace):
     import cv2
     import imggen
     for i in range(cli_flags.len):
-        img, mask = imggen.gen_random_img_pair()
+        data_len = random.randint(1, 64)
+        data = random.randbytes(data_len)
+        img, mask = imggen.gen_img_and_mask(data)
         cv2.imwrite(imgs_path + "/" + str(i) + ".png", img)
         cv2.imwrite(masks_path + "/" + str(i) + ".png", mask)
 
@@ -49,7 +52,7 @@ def command_train(cli_flags: argparse.Namespace):
         print(f"Файл датасета '{cli_flags.val_ds_path}' не найден")
         sys.exit(1)
     import train
-    import synthetic
+    import train.preloaded as preloaded
     model = train.DMTrainModel()
     if cli_flags.load_nn is not None:
         model.load(cli_flags.load_nn)
@@ -57,8 +60,8 @@ def command_train(cli_flags: argparse.Namespace):
         cli_flags.epoch,
         cli_flags.batch,
         cli_flags.num_workers,
-        synthetic.DMPreloadedDataset(cli_flags.train_ds_path),
-        synthetic.DMPreloadedDataset(cli_flags.val_ds_path),
+        preloaded.DMPreloadedDataset(cli_flags.train_ds_path),
+        preloaded.DMPreloadedDataset(cli_flags.val_ds_path),
     )
     model.save(cli_flags.save_nn + "/" +
         datetime.now().strftime("%d%m%y_%H%M%S")

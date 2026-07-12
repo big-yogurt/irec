@@ -1,1 +1,1 @@
-from .imggen import gen_dmtx, gen_random_dmtx, gen_random_img_pair
+from .imggen import gen_img_and_mask
