@@ -244,15 +244,15 @@ class DMTrainModel(pl.LightningModule):
         self.T_MAX = epochs * (len(train_dataset) // batch_size)
         # Датасеты
         try:
-            #early_stop = EarlyStopping(
-            #    monitor="loss",
-            #    patience=7,
-            #    mode="max",
-            #    verbose=True,
-            #)
+            early_stop = EarlyStopping(
+               monitor="loss",
+               patience=7,
+               mode="max",
+               verbose=True,
+            )
             train_dataset = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers, )
             val_dataset = DataLoader(validation_dataset, batch_size=batch_size, num_workers=num_workers, )
-            trainer = pl.Trainer(max_epochs=epochs, log_every_n_steps=1, callbacks=[RichProgressBar(leave=True)])
+            trainer = pl.Trainer(max_epochs=epochs, log_every_n_steps=1,  callbacks=[RichProgressBar(leave=True), early_stop])
             trainer.fit(
                 self,
                 train_dataloaders=train_dataset,
