@@ -312,7 +312,6 @@ class DMTrainModel(pl.LightningModule):
         pic = PIL.Image.open(io.BytesIO(img)).convert("L").convert("RGB").resize((256, 256))
         img = T.ToTensor()(pic)
 
-        pic.save("raw.png")
         self.model.eval()
         with torch.inference_mode():
 
@@ -320,7 +319,6 @@ class DMTrainModel(pl.LightningModule):
 
         from yolo_crop import YoloCropModel
         model = YoloCropModel("./runs/obb/train/weights/best.pt")
-        T.ToPILImage()(logits.sigmoid().squeeze()).save("nn.png")
         pp = postprocess(logits.sigmoid().squeeze())
         predicted = T.ToPILImage()(pp)
 
