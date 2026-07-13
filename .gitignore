@@ -26,3 +26,7 @@ nn/
 out/
 runs/
 test_d/
+cropped.png
+nn.png
+postprocessed.png
+raw.png
