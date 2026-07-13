@@ -12,7 +12,7 @@ from torch.optim import lr_scheduler
 from .adaptive_grid import postprocess
 from .loss import hard_loss
 from .synthetic import DMSyntheticDataset
-from pytorch_lightning.callbacks import RichProgressBar
+from pytorch_lightning.callbacks import RichProgressBar, EarlyStopping
 import torchvision.transforms as T
 from PIL.Image import Image
 from torch.utils.data import Dataset
