@@ -1,3 +1,5 @@
+import random
+
 import cv2
 from torch import Tensor
 from torch.utils.data import Dataset
@@ -14,7 +16,9 @@ class DMSyntheticDataset(Dataset):
 
     def __init__(self, dataset_len: int = 1000):
         self._dataset_len = dataset_len
-        self._pairs = tuple(imggen.gen_random_img_pair()
+        data_len = random.randint(1, 64)
+        data = random.randbytes(data_len)
+        self._pairs = tuple(imggen.gen_img_and_mask(data)
             for _ in range(dataset_len)
         )
 

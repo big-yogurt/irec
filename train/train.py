@@ -16,7 +16,8 @@ from pytorch_lightning.callbacks import RichProgressBar, EarlyStopping
 import torchvision.transforms as T
 from PIL.Image import Image
 from torch.utils.data import Dataset
-from yolo_crop import YoloCropModel
+
+from .yolo_crop import YoloCropModel
 
 
 class DMTrainModel(pl.LightningModule):
@@ -84,7 +85,7 @@ class DMTrainModel(pl.LightningModule):
         :param num_thread: Число ядер, котрое будет задано в пайторч.
         """
         super().__init__()
-        self.yolo_model = YoloCropModel("./runs/obb/train/weights/best.pt")
+        self.yolo_model = YoloCropModel("./yolo_crop_best.pt")
         if (num_thread):
             torch.set_num_threads(num_thread)
         # Инициализация модельки
@@ -283,11 +284,9 @@ class DMTrainModel(pl.LightningModule):
         Проверока модельки
         """
         ## Генерим рандомный экземпляр и сохраняем его.
-        synth = DMSyntheticDataset()
+        synth = DMSyntheticDataset(dataset_len=1)
         data = synth[0]
 
-        import torchvision.transforms as T
-        from PIL.Image import Image
         input: Image = T.ToPILImage()(data[0])
         target: Image = T.ToPILImage()(data[1])
 
