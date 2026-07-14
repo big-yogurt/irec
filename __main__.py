@@ -41,7 +41,7 @@ def command_gen_ds(cli_flags: argparse.Namespace):
 
 def command_run(cli_flags: argparse.Namespace):
     import server
-    asyncio.run(server.serve(cli_flags.load_nn))
+    asyncio.run(server.serve())
 
 
 def command_train(cli_flags: argparse.Namespace):
