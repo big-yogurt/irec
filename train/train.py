@@ -16,6 +16,7 @@ from pytorch_lightning.callbacks import RichProgressBar, EarlyStopping
 import torchvision.transforms as T
 from PIL.Image import Image
 from torch.utils.data import Dataset
+from yolo_crop import YoloCropModel
 
 
 class DMTrainModel(pl.LightningModule):
@@ -60,6 +61,10 @@ class DMTrainModel(pl.LightningModule):
     число эпох * размер датасета, используется в оптимизаторе, во время обучения
     """
 
+    yolo_model: YoloCropModel
+    """
+    Йолошная модель для обрезки картинок
+    """
     def __init__(
             self,
             encoder_name: str = "efficientnet-b3",
@@ -79,6 +84,7 @@ class DMTrainModel(pl.LightningModule):
         :param num_thread: Число ядер, котрое будет задано в пайторч.
         """
         super().__init__()
+        self.yolo_model = YoloCropModel("./runs/obb/train/weights/best.pt")
         if (num_thread):
             torch.set_num_threads(num_thread)
         # Инициализация модельки
@@ -297,9 +303,7 @@ class DMTrainModel(pl.LightningModule):
         predicted = T.ToPILImage()(postprocess(logits.sigmoid().squeeze()))
         predicted.save("out.png")
 
-        from yolo_crop import YoloCropModel
-        model = YoloCropModel("./runs/obb/train/weights/best.pt")
-        cropped = T.ToPILImage()(model.crop(logits.sigmoid().squeeze()))
+        cropped = T.ToPILImage()(self.yolo_model.crop(logits.sigmoid().squeeze()))
         cropped.save("cropped.png")
         T.ToPILImage()(postprocess(logits.sigmoid().squeeze())).save("postprocessed.png")
 
@@ -317,12 +321,10 @@ class DMTrainModel(pl.LightningModule):
 
             logits = self.forward(img)
 
-        from yolo_crop import YoloCropModel
-        model = YoloCropModel("./runs/obb/train/weights/best.pt")
         pp = postprocess(logits.sigmoid().squeeze())
         predicted = T.ToPILImage()(pp)
 
-        cropped_tmp = model.crop(pp)
+        cropped_tmp = self.yolo_model.crop(pp)
         cropped = T.ToPILImage()(cropped_tmp) if cropped_tmp is not None  else predicted
 
         return cropped
