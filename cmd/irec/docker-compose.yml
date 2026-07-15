@@ -1,0 +1,21 @@
+services:
+  irec:
+    build: .
+    ports:
+      - "50051:50051"
+    network_mode: host
+
+  triton:
+    image: nvcr.io/nvidia/tritonserver:26.06-py3
+    ports: 
+      - "8001:8001"
+    network_mode: host
+    volumes:
+      - ./triton/model_repository:/models
+    command:
+      - tritonserver
+      - --model-repository=/models
+      #- --model-control-mode
+      #- explicit
+      #- --load-model
+      #- unetpp

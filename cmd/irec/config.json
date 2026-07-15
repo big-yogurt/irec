@@ -4,9 +4,9 @@
         "port": 50051
     },
     "triton": {
-        "model_name": "unetpp",
-        "model_version": "2",
         "url": "127.0.0.1:8001",
+        "model_name": "unetpp",
+        "model_version": "",
         "input_name": "input",
         "output_name": "output"
     }
