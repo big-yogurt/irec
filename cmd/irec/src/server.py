@@ -9,7 +9,7 @@ from . import irec_pb2
 from . import irec_pb2_grpc
 import tritonclient.grpc.aio as grpcclient
 
-#from train import adaptive_grid
+from . import adaptive_grid
 
 
 logging.basicConfig(level=logging.INFO)
@@ -101,10 +101,11 @@ class ImageRecoveryServicer(irec_pb2_grpc.IrecServicer):
         )
         output = response.as_numpy(self._config["output_name"])
 
-        # TODO: обрезка результата с помощью YOLO и постобработка
-
         # Приведение к (H, W, C) в диапазоне [0, 255]
         output = np.squeeze(output).astype(np.uint8) * 255
+
+        # Постобработка
+        output = adaptive_grid.reconstruct(output)
 
         return output
 
