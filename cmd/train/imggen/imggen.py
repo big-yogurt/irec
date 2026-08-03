@@ -10,6 +10,7 @@ datamatrix.
 
 
 import random
+from typing import Any
 
 import cv2
 import numpy as np
@@ -40,6 +41,38 @@ def gen_img_and_mask(data: bytes) -> tuple[np.ndarray, np.ndarray]:
     return img, mask
 
 
+class RandomScratches(A.ImageOnlyTransform):
+    def __init__(self, p=0.5, color: tuple[int, int, int] = (255, 255, 255),
+            count_range: tuple[int, int] = (10, 60),
+            length_range: tuple[int, int] = (5, 50),
+            thickness_range: tuple[int, int] = (1, 2)
+        ):
+        super().__init__(p=p)
+        self.color = color
+        self.count_range = count_range
+        self.length_range = length_range
+        self.thickness_range = thickness_range
+
+    def get_params_dependent_on_data(self, params, data) -> dict[str, Any]:
+        return {}
+
+    def apply(self, img, **params) -> np.ndarray:
+        h, w = img.shape[:2]
+        num_scratches = random.randint(self.count_range[0], self.count_range[1])
+        max_length = random.randint(self.length_range[0], self.length_range[1])
+        for _ in range(num_scratches):
+            x1, y1 = random.randint(0, w), random.randint(0, h)
+            angle = random.uniform(0, 2 * np.pi)
+            length = random.randint(1, max_length)
+            x2 = int(x1 + length * np.cos(angle))
+            y2 = int(y1 + length * np.sin(angle))
+            thickness = random.randint(self.thickness_range[0],
+                self.thickness_range[1]
+            )
+            cv2.line(img, (x1, y1), (x2, y2), self.color, thickness)
+        return img
+
+
 def _gen_img(dm_map: np.ndarray) -> np.ndarray:
     pattern, style = _gen_dm_pattern(dm_map)
     img = cv2.resize(pattern, IMG_SIZE, interpolation=cv2.INTER_LINEAR)
@@ -62,18 +95,7 @@ def _gen_img(dm_map: np.ndarray) -> np.ndarray:
         A.RandomRotate90(),
         A.ThinPlateSpline(scale_range=(0.01, 0.015), fill=(255, 255, 255), p=1),
         A.InvertImg(p=0.5 if style != "classic" else 0),
-        A.AnnotationArtifacts(
-            element_types=("line",),
-            element_probabilities=(1.0,),
-            count_range=(10, 60),
-            thickness_range=(1, 2),
-            line_geometry="random_angle",
-            line_styles=("solid",),
-            line_style_probabilities=(1.0,),
-            color_palette=((255, 255, 255),),
-            line_length_range=(1, random.randint(5, 50)),
-            p=1,
-        ),
+        RandomScratches(p=1),
     ])
     img = dm_transform(image=img)["image"]
     img = cv2.resize(img, IMG_SIZE, interpolation=cv2.INTER_NEAREST)
@@ -188,6 +210,27 @@ def _gen_bg() -> np.ndarray:
     ])
     img = bg_transform(image=img)["image"]
     return img
+
+
+def _add_random_scratches(img: np.ndarray,
+        color: tuple[int, int, int] = (255, 255, 255)
+    ):
+    """
+    Добавляет случайные царапины на изображение. Работает только с чёрно-белым
+    изображением datamatrix'а, т.к. царапины - белые полосы, которые затирают
+    datamatrix.
+    """
+    h, w = img.shape[:2]
+    num_scratches = random.randint(10, 50)
+    max_length = random.randint(5, 100)
+    for _ in range(num_scratches):
+        x1, y1 = random.randint(0, w), random.randint(0, h)
+        angle = random.uniform(0, 2 * np.pi)
+        length = random.randint(1, max_length)
+        x2 = int(x1 + length * np.cos(angle))
+        y2 = int(y1 + length * np.sin(angle))
+        thickness = random.randint(1, 3)
+        cv2.line(img, (x1, y1), (x2, y2), color, thickness)
 
 
 def make_metal_texture(size=(256, 256), seed=None):
